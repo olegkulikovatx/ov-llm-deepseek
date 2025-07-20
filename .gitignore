@@ -6,6 +6,7 @@ __pycache__/
 .ipynb_checkpoints/
 # Ignore virtual environment directories
 venv/
+.venv/
 # Ignore logs
 *.log
 # Ignore build directories
