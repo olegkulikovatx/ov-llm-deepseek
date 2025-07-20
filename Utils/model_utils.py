@@ -94,7 +94,6 @@ def convert_and_compress_model(ai_id, model_id, model_dir, precision, use_precon
     '''
     
     from pathlib import Path
-    from IPython.display import Markdown, display
     import subprocess  # nosec - disable B404:import-subprocess check
     import platform
 

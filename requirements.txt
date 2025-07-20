@@ -1,0 +1,8 @@
+pyqt5
+tensorflow
+numpy
+torch
+huggingface_hub
+openvino
+openvino-genai
+transformers<4.53,>=4.36
