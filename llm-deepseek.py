@@ -1,11 +1,9 @@
 '''
 This script demonstrates how to use the OpenVINO GenAI library to load and generate text using a DeepSeek model.
-It includes functions to convert and compress models, and to generate text based on predefined input prompts.
+It includes functions to convert and compress models, etc.
 '''
 
 from pathlib import Path
-import os
-import sys
 import logging
 
 import openvino_genai as ov_genai
@@ -18,8 +16,9 @@ def main():
     #model_id = "DeepSeek-R1-Distill-Qwen-7B"
     ai_id  = "deepseek-ai"
     model_id = "DeepSeek-R1-Distill-Qwen-1.5B"
-    compression_variant = "INT4-NPU"  # or "INT4-CPU"
-    model_path = Path(model_id+"-" + compression_variant)
+    compression_variant = "INT4"
+    device = "NPU"  # "CPU"
+    model_path = Path(model_id+"-" + compression_variant + "-" + device)
 
     convert_and_compress_model(ai_id, model_id, model_path, compression_variant, use_preconverted=True)
     model_size = get_model_size(model_path)

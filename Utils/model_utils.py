@@ -33,6 +33,17 @@ int4_npu_config = {
 }
 
 def get_optimum_cli_command(model_id, weight_format, output_dir, compression_options=None, enable_awq=False, trust_remote_code=False):
+    '''Generate the optimum-cli command for converting a model to OpenVINO format.
+    Args:
+        model_id (str): The model ID to be converted.
+        weight_format (str): The weight format to convert the model to (e.g., "int4", "fp16").
+        output_dir (Path): The directory where the converted model will be saved.
+        compression_options (dict, optional): Options for model compression.
+        enable_awq (bool, optional): Whether to enable AWQ compression.
+        trust_remote_code (bool, optional): Whether to trust remote code execution.
+    Returns:
+        str: The command to run for model conversion.
+    '''
     base_command = "optimum-cli export openvino --model {} --task text-generation-with-past --weight-format {}"
     command = base_command.format(model_id, weight_format)
     if compression_options:
@@ -54,8 +65,34 @@ def get_optimum_cli_command(model_id, weight_format, output_dir, compression_opt
     return command
 
 
+def get_ov_model_hub_id(pt_model_id, precision):
+    """
+    Generate the OpenVINO model hub ID based on the AI ID, model ID, and precision.
+    """
+    OV_ORG = "OpenVINO"
+    pt_model_name = pt_model_id.split("/")[-1]
+    ov_model_name = pt_model_name + f"-{precision.lower()}-cw-ov"
+    ov_model_hub_id = f"{OV_ORG}/{ov_model_name}"
+
+    return ov_model_hub_id
+
+
 #def convert_and_compress_model(model_id, model_config, precision, use_preconverted=False):
 def convert_and_compress_model(ai_id, model_id, model_dir, precision, use_preconverted=False):
+    '''Convert and compress a model to the specified precision and save it to the model directory.
+    If the model is already converted and exists in the model directory, it will return the path.
+    If use_preconverted is True, it will check for a preconverted model in the OpenVINO repo on Hugging Face.
+    If the pre-converted model is not found, it will download a non converted model from Hugging Face
+    and convert the model using the optimum-cli command. 
+    Args:
+        ai_id (str): The AI organization for the model ex. DeepSeek.
+        model_id (str): The model ID to be converted.
+        model_dir (Path): The directory where the converted model will be saved.
+        precision (str): The precision to convert the model to (e.g., "INT4", "FP16").
+        use_preconverted (bool): Whether to use a preconverted model from the OpenVINO Model Hub.
+    Returns: model_dir (Path): The directory where the converted model is saved.
+    '''
+    
     from pathlib import Path
     from IPython.display import Markdown, display
     import subprocess  # nosec - disable B404:import-subprocess check
@@ -68,15 +105,13 @@ def convert_and_compress_model(ai_id, model_id, model_dir, precision, use_precon
         logging.info(f"✅ {precision} {model_id} model already converted and can be found in {model_dir}")
         return model_dir
     if use_preconverted:
-        OV_ORG = "OpenVINO"
-        pt_model_name = pt_model_id.split("/")[-1]
-        ov_model_name = pt_model_name + f"-{precision.lower()}-ov"
-        ov_model_hub_id = f"{OV_ORG}/{ov_model_name}"
+        ov_model_hub_id = get_ov_model_hub_id(pt_model_id, precision)
+        logging.info(f"Checking for preconverted {precision} {model_id} model in OpenVINO Model Hub: {ov_model_hub_id}")
         import huggingface_hub as hf_hub
 
         hub_api = hf_hub.HfApi()
         if hub_api.repo_exists(ov_model_hub_id):
-            logging.info(f"⌛Found preconverted {precision} {model_id}. Downloading model started. It may takes some time.")
+            logging.info(f"⌛Found preconverted {precision} {model_id}: {ov_model_hub_id}. Downloading model started. It may takes some time.")
             hf_hub.snapshot_download(ov_model_hub_id, local_dir=model_dir)
             logging.info(f"✅ {precision} {model_id} model downloaded and can be found in {model_dir}")
             return model_dir
