@@ -62,6 +62,11 @@ def main():
     pipe.generate(input_prompt, generation_config, streamer)
 
 
+def test_start():
+    logging.info("Test start")
+    assert(True)
+    logging.info("Test start passed")
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     main()
