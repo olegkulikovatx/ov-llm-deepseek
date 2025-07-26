@@ -8,7 +8,8 @@ import logging
 
 import openvino_genai as ov_genai
 
-from Utils.model_utils import convert_and_compress_model, get_optimum_cli_command, streamer, get_model_size
+from Utils.model_utils import convert_and_compress_model, get_devives
+from Utils.model_utils import streamer, get_model_size
 
 def main():
     logging.info("Hello from llm-deepseek!")
@@ -16,6 +17,21 @@ def main():
     #model_id = "DeepSeek-R1-Distill-Qwen-7B"
     ai_id  = "deepseek-ai"
     model_id = "DeepSeek-R1-Distill-Qwen-1.5B"
+
+    available_devices = get_devives()
+    logging.info(f"Available devices: {available_devices}")
+
+    device = ""
+    device_preference = ["GPU", "NPU", "CPU"]
+    for dev in device_preference:
+        if dev in available_devices:
+            device = dev
+            break
+    if not device:
+        logging.error("No suitable device found for model inference.")
+        return
+    logging.info(f"Using device: {device}")
+
     compression_variant = "INT4"
     device = "NPU"  # "CPU"
     model_path = Path(model_id+"-" + compression_variant + "-" + device)
@@ -42,6 +58,7 @@ def main():
 
     generation_config = ov_genai.GenerationConfig()
     generation_config.max_new_tokens = 256
+    generation_config.temperature = 0.01
 
     input_prompt = "Tell me about planet Mars."
     print(f"\nInput text: {input_prompt}")
@@ -53,11 +70,11 @@ def main():
 
     generation_config.max_new_tokens = 256
 
-    input_prompt = "What is e-based logarithm of 5?"
+    input_prompt = "How much is ln(5)?"
     print(f"\nInput text: {input_prompt}")
     pipe.generate(input_prompt, generation_config, streamer)
 
-    input_prompt = "solve the equation 2x^2 + 3x - 100 = 0"
+    input_prompt = "solve the equation 2x^2 + 3x - 100 = 0. accuracy 0.01"
     print(f"\nInput text: {input_prompt}")
     pipe.generate(input_prompt, generation_config, streamer)
 

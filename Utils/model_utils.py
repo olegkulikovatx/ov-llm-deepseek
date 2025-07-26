@@ -1,6 +1,11 @@
 import sys
 import logging
 import os
+from pathlib import Path
+import subprocess  # nosec - disable B404:import-subprocess check
+import platform
+import huggingface_hub as hf_hub
+import openvino as ov
 
 '''
 This module provides utility functions for model conversion, compression, and size retrieval.
@@ -93,10 +98,6 @@ def convert_and_compress_model(ai_id, model_id, model_dir, precision, use_precon
     Returns: model_dir (Path): The directory where the converted model is saved.
     '''
     
-    from pathlib import Path
-    import subprocess  # nosec - disable B404:import-subprocess check
-    import platform
-
     pt_model_id = f"{ai_id}/{model_id}"
     pt_model_name = model_id
     remote_code = False
@@ -106,7 +107,6 @@ def convert_and_compress_model(ai_id, model_id, model_dir, precision, use_precon
     if use_preconverted:
         ov_model_hub_id = get_ov_model_hub_id(pt_model_id, precision)
         logging.info(f"Checking for preconverted {precision} {model_id} model in OpenVINO Model Hub: {ov_model_hub_id}")
-        import huggingface_hub as hf_hub
 
         hub_api = hf_hub.HfApi()
         if hub_api.repo_exists(ov_model_hub_id):
@@ -150,3 +150,10 @@ def streamer(subword):
     # Return flag corresponds whether generation should be stopped.
     # False means continue generation.
     return False
+
+def get_devives():
+    '''Get the available devices for model inference.'''
+    core = ov.Core()
+    available_devices = core.get_available_devices()
+    
+    return available_devices
