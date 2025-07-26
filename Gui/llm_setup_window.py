@@ -6,8 +6,6 @@ import PyQt5
 import PyQt5.QtWidgets
 from PyQt5.QtCore import Qt
 
-from Managers.llm_manager import LlmManager
-
 class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
     def __init__(self, llm_manamer, parent=None):
         super().__init__(parent)
@@ -18,22 +16,23 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.add_model_selection_ui()
         self.add_device_selection_ui()
         self.add_compression_options_ui()  
-        self.add_temperature_ui()
+        self.add_temperature_ui()        
         self.add_button_ui()
         self.combine_layouts()
+        self.add_text_output_ui()        
         self.init_ui()
 
 
     def init_layouts(self):
         # Add widget groups for model selection, device selection, and compression options
-        self.main_layout = PyQt5.QtWidgets.QVBoxLayout(self)
-        self.setup_layout = PyQt5.QtWidgets.QVBoxLayout(self)
-        self.model_layout = PyQt5.QtWidgets.QHBoxLayout(self)
-        self.device_layout = PyQt5.QtWidgets.QHBoxLayout(self)
-        self.compression_layout = PyQt5.QtWidgets.QHBoxLayout(self)
-        self.temperature_layout = PyQt5.QtWidgets.QHBoxLayout(self)
+        self.main_layout = PyQt5.QtWidgets.QVBoxLayout()
+        self.setup_layout = PyQt5.QtWidgets.QVBoxLayout()
+        self.model_layout = PyQt5.QtWidgets.QHBoxLayout()
+        self.device_layout = PyQt5.QtWidgets.QHBoxLayout()
+        self.compression_layout = PyQt5.QtWidgets.QHBoxLayout()
+        self.temperature_layout = PyQt5.QtWidgets.QHBoxLayout()
 
-        self.button_layout = PyQt5.QtWidgets.QHBoxLayout(self)
+        self.button_layout = PyQt5.QtWidgets.QHBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
 
 
@@ -89,6 +88,16 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
 
         # Connect slider value change to update label
         self.temperature_input.valueChanged.connect(self.update_temperature_value)
+
+    def add_text_output_ui(self):
+        # Add a text output area to display model information or results
+        self.text_output = PyQt5.QtWidgets.QTextEdit()
+        self.text_output.setReadOnly(True)
+        self.main_layout.addWidget(self.text_output)
+        # Redirect logging to the text output area
+        logging.basicConfig(level=logging.INFO, format='%(message)s', handlers=[logging.StreamHandler(self.text_output)])
+        logging.info("Text output area initialized for logging.")
+
 
     def update_temperature_value(self, value):
         # Update the temperature value label when the slider changes
@@ -162,5 +171,5 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
 
     def init_ui(self):
         # Initialize UI components here
-        logging.info("LLM Setu Window initialized.")
+        logging.info("LLM Setup Window initialized.")
         pass
