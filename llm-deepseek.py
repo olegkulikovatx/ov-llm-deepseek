@@ -5,11 +5,11 @@ It includes functions to convert and compress models, etc.
 
 from pathlib import Path
 import logging
-
 import openvino_genai as ov_genai
-
 from Utils.model_utils import convert_and_compress_model, get_devives
 from Utils.model_utils import streamer, get_model_size
+
+from PyQt5.QtWidgets import QWidget
 
 def main():
     logging.info("Hello from llm-deepseek!")

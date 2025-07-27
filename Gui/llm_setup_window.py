@@ -2,12 +2,18 @@ import logging
 from pathlib import Path
 import os
 import sys
+import openvino_genai as ov_genai  
+from Managers.llm_manager import LlmManager
+from Utils.model_utils import streamer
+
+## Qt should be imported  after openvino_genai to avoid conflicts
 import PyQt5
 import PyQt5.QtWidgets
 from PyQt5.QtCore import Qt
+from Gui.out_log import OutLog
 
 class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
-    def __init__(self, llm_manamer, parent=None):
+    def __init__(self, llm_manamer: LlmManager, parent=None):
         super().__init__(parent)
         self.llm_manager = llm_manamer
         self.setWindowTitle("Setup LLM")
@@ -21,6 +27,7 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.combine_layouts()
         self.add_text_output_ui()        
         self.init_ui()
+        self.chat_window = None  # Placeholder for chat window
 
 
     def init_layouts(self):
@@ -63,6 +70,7 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.device_dropdown.setGeometry(150, 100, 500, 30)
         devices = self.llm_manager.available_devices
         self.device_dropdown.addItems(devices)
+        self.device_dropdown.setCurrentText(self.llm_manager.device)
 
         self.device_layout.addWidget(self.device_label)
         self.device_layout.addWidget(self.device_dropdown)
@@ -95,8 +103,13 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.text_output.setReadOnly(True)
         self.main_layout.addWidget(self.text_output)
         # Redirect logging to the text output area
-        logging.basicConfig(level=logging.INFO, format='%(message)s', handlers=[logging.StreamHandler(self.text_output)])
-        logging.info("Text output area initialized for logging.")
+        sys.stdout = OutLog(self.text_output)  # Redirect stdout to QTextEdit
+        sys.stderr = sys.stdout  # Redirect stderr to the same QTextEdit
+        # Example usage: print statements will now appear in the QTextEdit
+        print("This message will appear in the QTextEdit.")
+        print("Another line of output.")        
+        #logging.basicConfig(level=logging.INFO, format='%(message)s', handlers=[logging.StreamHandler(self.text_output)])
+        #logging.info("Text output area initialized for logging.")
 
 
     def update_temperature_value(self, value):
@@ -106,15 +119,14 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
 
     def add_button_ui(self):
         # Add buttons for actions like "Convert Model", "Load Model", etc.
-        self.ok_button = PyQt5.QtWidgets.QPushButton("OK")
-        self.cancel_button = PyQt5.QtWidgets.QPushButton("Cancel")
+        self.ok_button = PyQt5.QtWidgets.QPushButton("Strat LLM")
+        self.cancel_button = PyQt5.QtWidgets.QPushButton("Cancel/Close")
         self.button_layout.addWidget(self.ok_button)
         self.button_layout.addWidget(self.cancel_button)
         self.ok_button.clicked.connect(self.on_ok_clicked)
         self.cancel_button.clicked.connect(self.on_cancel_clicked)
 
     def on_ok_clicked(self):
-        pass
         # Handle OK button click
         selected_model = self.model_dropdown.currentText()
         selected_device = self.device_dropdown.currentText()
@@ -129,6 +141,32 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.llm_manager.active_compression_variant = selected_compression
         self.llm_manager.set_device(selected_device)
         self.llm_manager.set_temperature(selected_temperature)
+        if not selected_device:
+            logging.error("No device selected for model inference.")
+            return
+
+        model_path = self.llm_manager.convert_and_compress_model()
+        if not model_path or not model_path.exists(): 
+            logging.error("Model conversion failed.")
+            return        
+        logging.info(f"Model converted and saved to: {model_path}. Device: {selected_device}")
+
+        model_size = self.llm_manager.get_model_size(model_path)
+        logging.info(f"Model size: {model_size:.2f} MB")
+
+        pipe = self.llm_manager.create_pipeline(model_path)
+        logging.info(f"Pipeline created with model: {model_path} on device: {selected_device}")
+        
+        generation_config = ov_genai.GenerationConfig()
+        generation_config.max_new_tokens = 256
+        generation_config.temperature = 0.01
+        input_prompt = "Tell me about planet Mars."
+        print(f"\nInput text: {input_prompt}")
+        if not pipe:
+            logging.error("Failed to create pipeline. Model path may be invalid.")
+            return
+        #pipe.generate(input_prompt, generation_config, streamer)
+        pipe.generate(input_prompt, generation_config, streamer)
 
 
     def on_cancel_clicked(self):
