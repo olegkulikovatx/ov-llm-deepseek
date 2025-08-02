@@ -9,8 +9,11 @@ from Utils.model_utils import streamer
 ## Qt should be imported  after openvino_genai to avoid conflicts
 import PyQt5
 import PyQt5.QtWidgets
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QCursor
 from PyQt5.QtCore import Qt
 from Gui.out_log import OutLog
+from Gui.llm_chat_window import LlmChatWindow
 
 class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
     def __init__(self, llm_manamer: LlmManager, parent=None):
@@ -18,14 +21,6 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.llm_manager = llm_manamer
         self.setWindowTitle("Setup LLM")
         self.setGeometry(100, 100, 800, 600)
-        self.init_layouts()
-        self.add_model_selection_ui()
-        self.add_device_selection_ui()
-        self.add_compression_options_ui()  
-        self.add_temperature_ui()        
-        self.add_button_ui()
-        self.combine_layouts()
-        self.add_text_output_ui()        
         self.init_ui()
         self.chat_window = None  # Placeholder for chat window
 
@@ -103,13 +98,14 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.text_output.setReadOnly(True)
         self.main_layout.addWidget(self.text_output)
         # Redirect logging to the text output area
-        sys.stdout = OutLog(self.text_output)  # Redirect stdout to QTextEdit
+        ##sys.stdout = OutLog(self.text_output)  # Redirect stdout to QTextEdit
         sys.stderr = sys.stdout  # Redirect stderr to the same QTextEdit
         # Example usage: print statements will now appear in the QTextEdit
-        print("This message will appear in the QTextEdit.")
-        print("Another line of output.")        
-        #logging.basicConfig(level=logging.INFO, format='%(message)s', handlers=[logging.StreamHandler(self.text_output)])
-        #logging.info("Text output area initialized for logging.")
+        #print("This message will appear in the QTextEdit.")
+        #print("Another line of output.")        
+        logging.basicConfig(level=logging.INFO)
+        logging.getLogger().addHandler(logging.StreamHandler(OutLog(self.text_output)))
+        logging.info("Text output area initialized for logging.")
 
 
     def update_temperature_value(self, value):
@@ -119,7 +115,7 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
 
     def add_button_ui(self):
         # Add buttons for actions like "Convert Model", "Load Model", etc.
-        self.ok_button = PyQt5.QtWidgets.QPushButton("Strat LLM")
+        self.ok_button = PyQt5.QtWidgets.QPushButton("Start/Restart LLM")
         self.cancel_button = PyQt5.QtWidgets.QPushButton("Cancel/Close")
         self.button_layout.addWidget(self.ok_button)
         self.button_layout.addWidget(self.cancel_button)
@@ -128,6 +124,8 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
 
     def on_ok_clicked(self):
         # Handle OK button click
+        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))  # type: ignore # 
+        
         selected_model = self.model_dropdown.currentText()
         selected_device = self.device_dropdown.currentText()
         selected_compression = self.compression_dropdown.currentText()
@@ -143,11 +141,13 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.llm_manager.set_temperature(selected_temperature)
         if not selected_device:
             logging.error("No device selected for model inference.")
+            QApplication.restoreOverrideCursor()
             return
 
         model_path = self.llm_manager.convert_and_compress_model()
         if not model_path or not model_path.exists(): 
             logging.error("Model conversion failed.")
+            QApplication.restoreOverrideCursor()
             return        
         logging.info(f"Model converted and saved to: {model_path}. Device: {selected_device}")
 
@@ -155,18 +155,35 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         logging.info(f"Model size: {model_size:.2f} MB")
 
         pipe = self.llm_manager.create_pipeline(model_path)
+        if not pipe:
+            logging.error("Failed to create pipeline. Model path may be invalid.")
+            QApplication.restoreOverrideCursor()
+            return
+        
         logging.info(f"Pipeline created with model: {model_path} on device: {selected_device}")
         
         generation_config = ov_genai.GenerationConfig()
         generation_config.max_new_tokens = 256
-        generation_config.temperature = 0.01
-        input_prompt = "Tell me about planet Mars."
-        print(f"\nInput text: {input_prompt}")
-        if not pipe:
-            logging.error("Failed to create pipeline. Model path may be invalid.")
-            return
+        generation_config.temperature = selected_temperature
+
+        if not self.chat_window:
+            self.chat_window = LlmChatWindow(pipe, generation_config, parent=self)
+            self.chat_window.setWindowTitle(f"LLM Chat - {selected_model}")
+            self.chat_window.show()
+        else:
+            self.chat_window.set_pipe(pipe)
+            self.chat_window.set_generation_config(generation_config)
+            self.chat_window.show()
+
+        QApplication.restoreOverrideCursor()  # Restore cursor to default
+
+        #input_prompt = "Tell me about planet Mars."
+        #print(f"\nInput text: {input_prompt}")
+        #if not pipe:
+        #    logging.error("Failed to create pipeline. Model path may be invalid.")
+        #    return
         #pipe.generate(input_prompt, generation_config, streamer)
-        pipe.generate(input_prompt, generation_config, streamer)
+        #pipe.generate(input_prompt, generation_config, streamer)
 
 
     def on_cancel_clicked(self):
@@ -209,5 +226,13 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
 
     def init_ui(self):
         # Initialize UI components here
+        self.init_layouts()
+        self.add_model_selection_ui()
+        self.add_device_selection_ui()
+        self.add_compression_options_ui()  
+        self.add_temperature_ui()        
+        self.add_button_ui()
+        self.combine_layouts()
+        self.add_text_output_ui()        
+
         logging.info("LLM Setup Window initialized.")
-        pass
