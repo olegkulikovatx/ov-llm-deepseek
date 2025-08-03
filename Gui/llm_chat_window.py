@@ -95,10 +95,9 @@ class LlmChatWindow(PyQt5.QtWidgets.QMainWindow):
         # Display the user input in the chat output area
         # Apply style to user input
         user_text = f"You: {input_text}"
-        styled_text = f'<div><span style="color: blue; font-family: Courier New;">{user_text}</span></div>'
+        styled_text = f'<div style="text-align: right;"><span style="color: blue; font-family: Courier New;">{user_text}</span></div><br>'
         self.chat_output.append(styled_text)
-        # Append a horizontal line to separate turns
-        self.chat_output.append("<hr>")
+        
         
         # Generate response using the LLM pipeline
         try:
