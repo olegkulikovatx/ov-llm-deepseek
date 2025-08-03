@@ -97,9 +97,6 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
         self.text_output = PyQt5.QtWidgets.QTextEdit()
         self.text_output.setReadOnly(True)
         self.main_layout.addWidget(self.text_output)
-        # Redirect logging to the text output area
-        ##sys.stdout = OutLog(self.text_output)  # Redirect stdout to QTextEdit
-        sys.stderr = sys.stdout  # Redirect stderr to the same QTextEdit
         # Example usage: print statements will now appear in the QTextEdit
         #print("This message will appear in the QTextEdit.")
         #print("Another line of output.")        
@@ -176,15 +173,6 @@ class LlmSetuWindow(PyQt5.QtWidgets.QMainWindow):
             self.chat_window.show()
 
         QApplication.restoreOverrideCursor()  # Restore cursor to default
-
-        #input_prompt = "Tell me about planet Mars."
-        #print(f"\nInput text: {input_prompt}")
-        #if not pipe:
-        #    logging.error("Failed to create pipeline. Model path may be invalid.")
-        #    return
-        #pipe.generate(input_prompt, generation_config, streamer)
-        #pipe.generate(input_prompt, generation_config, streamer)
-
 
     def on_cancel_clicked(self):
         # Handle Cancel button click

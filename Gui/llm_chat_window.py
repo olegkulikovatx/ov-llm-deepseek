@@ -16,8 +16,8 @@ class LlmChatWindow(PyQt5.QtWidgets.QMainWindow):
     def __init__(self, pipe: ov_genai.LLMPipeline, 
                  generation_config: ov_genai.GenerationConfig,  parent=None):
         super().__init__(parent)
-        self.pipe = pipe
-        self.generation_config = generation_config
+        self.set_pipe(pipe)
+        self.set_generation_config(generation_config)
         self.setWindowTitle("LLM Chat")
         self.setGeometry(300, 300, 800, 600)
         self.init_ui()
@@ -56,17 +56,21 @@ class LlmChatWindow(PyQt5.QtWidgets.QMainWindow):
         
         # Redirect logging to the text output area
         sys.stdout = OutLog(self.chat_output)
-        sys.stderr = sys.stdout  # Redirect stderr to the same QTextEdit
-        #print("Test")
+        sys.stderr = sys.stdout  # Redirect stderr to the same QTextEdit        
 
     def init_butons(self):
         # Button for sending messages
         self.send_button = PyQt5.QtWidgets.QPushButton("Send")
         self.send_button.clicked.connect(self.on_send_clicked)
+        # Connect the returnPressed signal of the prompt input to the send button click event
+        self.pompt_input.returnPressed.connect(self.on_send_clicked)
         
         # Button for canceling the chat
         self.cancel_button = PyQt5.QtWidgets.QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.on_cancel_clicked)
+
+        self.clear_button = PyQt5.QtWidgets.QPushButton("Clear")
+        self.clear_button.clicked.connect(lambda: self.chat_output.clear())
         
         # Add buttons to the main layout
         self.button_layout = PyQt5.QtWidgets.QHBoxLayout()
@@ -76,7 +80,32 @@ class LlmChatWindow(PyQt5.QtWidgets.QMainWindow):
 
 
     def on_send_clicked(self):
-        pass
+        # Get the input text from the prompt input field
+        input_text = self.pompt_input.text().strip()
+        if not input_text:
+            PyQt5.QtWidgets.QMessageBox.warning(self, "Warning", "Please enter a message.")
+            return
+        
+        # Clear the input field
+        self.pompt_input.clear()
+        
+        # Log the input text
+        logging.info(f"User input: {input_text}")
+        
+        # Display the user input in the chat output area
+        # Apply style to user input
+        user_text = f"You: {input_text}"
+        styled_text = f'<div><span style="color: blue; font-family: Courier New;">{user_text}</span></div>'
+        self.chat_output.append(styled_text)
+        # Append a horizontal line to separate turns
+        self.chat_output.append("<hr>")
+        
+        # Generate response using the LLM pipeline
+        try:
+            self.pipe.generate(input_text, self.generation_config, streamer)
+        except Exception as e:
+            logging.error(f"Error during LLM generation: {e}")
+            self.chat_output.append(f'<span style="color: red;">Error: {e}</span>')
 
     def on_cancel_clicked(self):
         # Close the chat window
@@ -90,7 +119,6 @@ class LlmChatWindow(PyQt5.QtWidgets.QMainWindow):
 
 
     def init_ui(self):
-        pass
         # Initialize UI components
         self.init_layouts()
         self.add_text_output_ui()
@@ -101,5 +129,4 @@ class LlmChatWindow(PyQt5.QtWidgets.QMainWindow):
         central_widget = PyQt5.QtWidgets.QWidget()
         central_widget.setLayout(self.main_layout)
         self.setCentralWidget(central_widget)
-
-        # logging.info("LLM Chat Window initialized.")
+        logging.info("LLM Chat Window initialized.")
